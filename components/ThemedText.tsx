@@ -1,34 +1,37 @@
-import { StyleSheet, Text, type TextProps } from 'react-native';
+import tw from '@/lib/tailwind';
+import { StyleSheet, Text, TextProps, useColorScheme } from 'react-native';
 
-import { useThemeColor } from '@/hooks/useThemeColor';
+interface ThemedTextProps extends TextProps {
+  type?: 'default' | 'title' | 'subtitle';
+  style?: any;
+  className?: string; // 添加className属性支持TailwindCSS
+}
 
-export type ThemedTextProps = TextProps & {
-  lightColor?: string;
-  darkColor?: string;
-  type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link';
-};
-
-export function ThemedText({
-  style,
-  lightColor,
-  darkColor,
-  type = 'default',
-  ...rest
-}: ThemedTextProps) {
-  const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
-
+export function ThemedText({ type = 'default', style, className, ...props }: ThemedTextProps) {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  
+  // 使用预定义的样式
+  const getTypeStyle = () => {
+    switch (type) {
+      case 'title':
+        return styles.title;
+      case 'subtitle':
+        return styles.subtitle;
+      default:
+        return styles.default;
+    }
+  };
+  
   return (
-    <Text
+    <Text 
       style={[
-        { color },
-        type === 'default' ? styles.default : undefined,
-        type === 'title' ? styles.title : undefined,
-        type === 'defaultSemiBold' ? styles.defaultSemiBold : undefined,
-        type === 'subtitle' ? styles.subtitle : undefined,
-        type === 'link' ? styles.link : undefined,
+        { color: isDark ? '#ffffff' : '#000000' },
+        getTypeStyle(),
         style,
-      ]}
-      {...rest}
+        className ? tw`${className}` : null
+      ]} 
+      {...props} 
     />
   );
 }
@@ -58,3 +61,8 @@ const styles = StyleSheet.create({
     color: '#0a7ea4',
   },
 });
+interface ThemedTextProps extends TextProps {
+  type?: 'default' | 'title' | 'subtitle';
+  style?: any;
+  className?: string; // 添加className属性支持TailwindCSS
+}

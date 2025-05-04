@@ -156,10 +156,29 @@ export default function HomeScreen() {
     setCourseIdToDelete(null);
   };
 
-  // 新增：处理确认删除的函数
+  // 修改：处理确认删除的函数
   const handleConfirmDelete = async () => {
+    console.log('确认删除按钮被点击，courseIdToDelete:', courseIdToDelete);
     if (courseIdToDelete) {
-      await performActualDelete(courseIdToDelete);
+      try {
+        console.log('开始执行删除操作...');
+        const coursesJson = await AsyncStorage.getItem('courses');
+        console.log('获取到的课程数据:', coursesJson);
+        let courses: Course[] = coursesJson ? JSON.parse(coursesJson) : [];
+        console.log('解析后的课程数组:', courses);
+        const updatedCourses = courses.filter(course => course.id !== courseIdToDelete);
+        console.log('过滤后的课程数组:', updatedCourses);
+        await AsyncStorage.setItem('courses', JSON.stringify(updatedCourses));
+        console.log('已将更新后的课程保存到 AsyncStorage');
+        setAllCourses(updatedCourses); // 更新本地状态
+        console.log('课程已成功删除 (ID:', courseIdToDelete, ')');
+        Alert.alert('成功', '课程已成功删除');
+      } catch (error) {
+        console.error('删除课程失败:', error);
+        Alert.alert('错误', '删除失败，请重试');
+      }
+    } else {
+      console.log('没有要删除的课程 ID');
     }
     handleCloseDeleteConfirmModal(); // 关闭确认 Modal
   };
@@ -175,26 +194,21 @@ export default function HomeScreen() {
           />
         }>
         <ThemedView style={styles.container}>
-          <ThemedText type="title" style={styles.title}>今日课程</ThemedText>
+          <ThemedText type="title" className="text-xl font-bold mb-5" style={styles.title}>今日课程</ThemedText>
           {todayCourses.length === 0 ? (
-            <ThemedText style={styles.noCoursesText}>今天没有课程安排。</ThemedText>
+            <ThemedText className="text-center text-gray-500 mt-5 text-base">今天没有课程安排。</ThemedText>
           ) : (
             todayCourses.map((course) => (
               <TouchableOpacity
                 key={course.id}
-                onPress={() => handleCoursePress(course)} // 点击时调用 handleCoursePress
+                onPress={() => handleCoursePress(course)}
               >
                 <ThemedView
-                  style={[
-                    styles.courseCard,
-                    course.isCurrentCourse && styles.currentCourse
-                  ]}
+                  className={`p-4 mb-3 rounded-lg ${course.isCurrentCourse ? 'bg-red-100 border-l-4 border-red-500 shadow-md' : 'bg-gray-100'}`}
                 >
-                  <ThemedText type="subtitle" style={styles.courseName}>
-                    {course.name}
-                  </ThemedText>
-                  <ThemedText>{course.time}</ThemedText>
-                  <ThemedText>{course.location}</ThemedText>
+                  <ThemedText type="subtitle" className="font-bold mb-2">{course.name}</ThemedText>
+                  <ThemedText className="text-gray-700">{course.time}</ThemedText>
+                  <ThemedText className="text-gray-700">{course.location}</ThemedText>
                 </ThemedView>
               </TouchableOpacity>
             ))
@@ -280,7 +294,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   currentCourse: {
-    backgroundColor: '#ffebee',
+    backgroundColor: '#ff5252', // 更鲜明的红色
+    borderLeftWidth: 5,
+    borderLeftColor: '#d32f2f',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
   },
   courseName: {
     marginBottom: 8,

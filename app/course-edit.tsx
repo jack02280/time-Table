@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Button, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface Course {
   id: string;
@@ -28,6 +28,10 @@ export default function CourseEditScreen() {
   const [courseLocation, setCourseLocation] = useState(params.location as string || '');
   const [courseDescription, setCourseDescription] = useState(params.description as string || '');
   const [weekday, setWeekday] = useState(params.weekday as string || '1');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
+  // 修改状态，添加Modal相关状态
+  const [isDeleteConfirmModalVisible, setIsDeleteConfirmModalVisible] = useState(false);
 
   // 生成小时选项
   const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
@@ -128,32 +132,48 @@ export default function CourseEditScreen() {
     }
   };
 
-  const handleDelete = async () => {
-    Alert.alert(
-      '确认删除',
-      '确定要删除这门课程吗？',
-      [
-        { text: '取消', style: 'cancel' },
-        {
-          text: '删除',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const coursesJson = await AsyncStorage.getItem('courses');
-              if (coursesJson) {
-                const courses: Course[] = JSON.parse(coursesJson);
-                const updatedCourses = courses.filter(course => course.id !== courseId);
-                await AsyncStorage.setItem('courses', JSON.stringify(updatedCourses));
-              }
-              router.back();
-            } catch (error) {
-              Alert.alert('错误', '删除失败，请重试');
-            }
-          }
-        }
-      ]
-    );
+  // 处理删除按钮点击 - 显示确认Modal
+  const handleDeleteButtonPress = () => {
+    setIsDeleteConfirmModalVisible(true);
   };
+
+  // 关闭删除确认Modal
+  const handleCloseDeleteConfirmModal = () => {
+    setIsDeleteConfirmModalVisible(false);
+  };
+
+  // 确认删除的函数
+  const handleConfirmDelete = async () => {
+    try {
+      console.log('开始执行删除操作...');
+      const coursesJson = await AsyncStorage.getItem('courses');
+      console.log('获取到的课程数据:', coursesJson);
+      
+      if (!coursesJson) {
+        console.log('没有找到课程数据');
+        return;
+      }
+      
+      let courses = JSON.parse(coursesJson);
+      console.log('解析后的课程数组:', courses);
+      console.log('要删除的课程ID:', courseId);
+      
+      const updatedCourses = courses.filter((course: Course) => course.id !== courseId);
+      console.log('过滤后的课程数组:', updatedCourses);
+      
+      await AsyncStorage.setItem('courses', JSON.stringify(updatedCourses));
+      console.log('已将更新后的课程保存到 AsyncStorage');
+      
+      // 直接返回主页
+      router.replace('/');
+    } catch (error) {
+      console.error('删除课程失败:', error);
+    }
+    
+    // 关闭Modal
+    setIsDeleteConfirmModalVisible(false);
+  };
+
   return (
     <>
       <Stack.Screen 
@@ -168,6 +188,16 @@ export default function CourseEditScreen() {
       />
       
       <ScrollView style={styles.container}>
+        {/* 显示错误信息 */}
+        {errorMessage && (
+          <ThemedView style={styles.errorContainer}>
+            <ThemedText style={styles.errorText}>{errorMessage}</ThemedText>
+            <TouchableOpacity onPress={() => setErrorMessage(null)}>
+              <ThemedText style={styles.dismissError}>关闭</ThemedText>
+            </TouchableOpacity>
+          </ThemedView>
+        )}
+
         <ThemedView style={styles.formGroup}>
           <ThemedText style={styles.label}>课程名称</ThemedText>
           <TextInput
@@ -273,12 +303,35 @@ export default function CourseEditScreen() {
         {!isNewCourse && (
           <TouchableOpacity 
             style={styles.deleteButton}
-            onPress={handleDelete}
+            onPress={handleDeleteButtonPress}
           >
             <ThemedText style={styles.deleteButtonText}>删除课程</ThemedText>
           </TouchableOpacity>
         )}
       </ScrollView>
+
+      {/* 删除确认Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isDeleteConfirmModalVisible}
+        onRequestClose={handleCloseDeleteConfirmModal}
+      >
+        <View style={styles.modalOverlay}>
+          <ThemedView style={styles.modalContent}>
+            <ThemedText style={styles.modalTitle}>确认删除</ThemedText>
+            <ThemedText style={styles.modalText}>确定要删除这门课程吗？此操作无法撤销。</ThemedText>
+            <View style={styles.modalButtonContainer}>
+              <Button title="取消" onPress={handleCloseDeleteConfirmModal} />
+              <Button 
+                title="确认删除" 
+                onPress={handleConfirmDelete} 
+                color={Platform.OS === 'ios' ? 'red' : undefined}
+              />
+            </View>
+          </ThemedView>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -357,6 +410,94 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 100, // 保持之前调整的高度
     // width: 1, // 移除或注释掉这行，让 flex 控制宽度
+  },
+  errorContainer: {
+    backgroundColor: '#ffebee',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#d32f2f',
+    flex: 1,
+  },
+  dismissError: {
+    color: '#d32f2f',
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  confirmContainer: {
+    backgroundColor: '#fff3e0',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#ffcc80',
+  },
+  confirmText: {
+    fontSize: 16,
+    marginBottom: 16,
+  },
+  confirmButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  cancelButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  cancelButtonText: {
+    color: '#757575',
+  },
+  confirmDeleteButton: {
+    backgroundColor: '#d32f2f',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 4,
+  },
+  confirmDeleteText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  // 添加 Modal 相关样式
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '80%',
+    padding: 20,
+    borderRadius: 15,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalTitle: {
+    marginBottom: 15,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  modalText: {
+    marginBottom: 10,
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginTop: 20,
   },
 });
 

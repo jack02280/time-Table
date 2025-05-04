@@ -1,10 +1,8 @@
-import { Image } from 'expo-image';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert, Button, Modal, Platform, StyleSheet, TouchableOpacity, View, ScrollView } from 'react-native';
+import { Alert, Button, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
-import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 
